@@ -79,7 +79,16 @@ input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visi
 .ph{position:relative;aspect-ratio:1;background:var(--fill);display:grid;place-items:center;color:var(--ph)}
 .ph svg{width:44px;height:44px}.ph img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .badge{position:absolute;top:10px;left:10px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.badge.b{background:color-mix(in srgb,var(--bl) 15%,var(--card));color:var(--bl)}.badge.g{background:color-mix(in srgb,var(--gr) 15%,var(--card));color:var(--gr)}
+.badge.b{background:color-mix(in srgb,var(--bl) 15%,var(--card));color:var(--bl)}.badge.g{background:color-mix(in srgb,var(--gr) 15%,var(--card));color:var(--gr)}.badge.o{background:color-mix(in srgb,#ff9f0a 16%,var(--card));color:#b05e00}.badge.y{background:color-mix(in srgb,#ffcc00 18%,var(--card));color:#7a5c00}
+.orders-split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.orders-split{grid-template-columns:1fr}}
+.kpi{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);margin-top:6px}
+.kpi b{font-size:13px;color:var(--tx)}
+.section-head{display:flex;align-items:center;gap:10px;margin:8px 0 12px}
+.section-head h3{font-size:16px;letter-spacing:-.01em}
+.count{font-size:12px;font-weight:700;padding:4px 9px;border-radius:99px;background:var(--fill);color:var(--mu)}
+.count.on{background:var(--bl);color:var(--ac-tx)}
+.mini{font-size:12px;color:var(--mu)}
 .bd{padding:14px 16px 16px}.bd h3{font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 dl{margin:10px 0 14px;display:grid;gap:4px}dl div{display:flex;justify-content:space-between;gap:10px;font-size:14px}dt{color:var(--mu)}dd{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .act{display:flex;gap:6px;flex-wrap:wrap}.act .btn:first-child{flex:1}
@@ -173,6 +182,7 @@ dialog form{display:grid;gap:14px;margin-top:16px}
  <button class="nav" data-v="home"></button>
  <button class="nav" data-v="sale"></button>
  <button class="nav" data-v="sold"></button>
+ <button class="nav" data-v="orders"></button>
  <button class="nav mob" data-a="cfg" id="mset"></button>
 </aside>
 <main>
@@ -192,7 +202,7 @@ dialog form{display:grid;gap:14px;margin-top:16px}
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const I=p=>`<svg viewBox="0 0 24 24">${p}</svg>`;
 const ICON={home:I('<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),sale:I('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1"/>'),sold:I('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>'),search:I('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),img:I('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5L5 21"/>'),gear:I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
- sun:I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),moon:I('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),plus:I('<path d="M12 5v14M5 12h14"/>'),check:I('<path d="M5 12.5l4.5 4.5L19 7.5"/>')};
+ sun:I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),moon:I('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),plus:I('<path d="M12 5v14M5 12h14"/>'),check:I('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),orders:I('<path d="M12 2l8 4.5v9L12 20 4 15.5v-9z"/><path d="M4 7l8 4.5L20 7"/><path d="M12 11.5V20"/>'),truck:I('<rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 11h4l2 3v3h-6"/><circle cx="5.5" cy="18.5" r="1.2"/><circle cx="18.5" cy="18.5" r="1.2"/>'),wallet:I('<path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M7 12a5 5 0 0 1 10 0a5 5 0 0 1-10 0z"/><path d="M16 8.5h2.5a1 1 0 0 1 1 1v1"/>'),euro:I('<path d="M9 7a6 6 0 0 0 0 10"/><path d="M8 10h7"/><path d="M8 14h6"/>')};
 const eur=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n||0);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -205,6 +215,8 @@ const jp=(k,d)=>{try{return JSON.parse(ls.get(k)||'null')||d}catch(e){return d}}
 let D=norm(null),cfg=jp('vd_cfg',{}),pref={theme:'auto',accent:'#0071e3',...jp('vd_pref',{})},view='home',range='7',S={q:'',sort:'new',f:'all',per:'all'},tmp='',loaded=false;
 function norm(j){return{settings:{goal:0,...(j&&j.settings)},items:Array.isArray(j&&j.items)?j.items:[]}}
 const sold=()=>D.items.filter(i=>i.status==='sold'),onSale=()=>D.items.filter(i=>i.status!=='sold');
+const toShip=()=>sold().filter(i=>!i.shipped),shipped=()=>sold().filter(i=>!!i.shipped);
+const moneyPending=()=>sold().filter(i=>!i.received),moneyReceived=()=>sold().filter(i=>!!i.received);
 
 /* ---------- Thème & couleur secondaire ---------- */
 const PRESETS=[['Bleu','#0071e3'],['Violet','#af52de'],['Rose','#ff2d55'],['Rouge','#ff3b30'],['Orange','#ff9500'],['Jaune','#ffcc00'],['Vert','#2fa24f'],['Turquoise','#00b5c4'],['Graphite','#636366']];
@@ -310,13 +322,17 @@ setInterval(()=>{ if(loaded && !busy) pull(); }, 30000);
 /* ---------- Rendu ---------- */
 function render(){
  $$('.nav[data-v]').forEach(b=>{const v=b.dataset.v;b.classList.toggle('on',v===view);
-  b.innerHTML=ICON[v]+`<span>${({home:'Accueil',sale:'À vendre',sold:'Vendus'})[v]}</span>`+(v==='sale'?`<em>${onSale().length}</em>`:v==='sold'?`<em>${sold().length}</em>`:'')});
+  b.innerHTML=ICON[v]+`<span>${({home:'Accueil',sale:'À vendre',sold:'Vendus',orders:'Commandes'})[v]}</span>`+(v==='sale'?`<em>${onSale().length}</em>`:v==='sold'?`<em>${sold().length}</em>`:v==='orders'?`<em>${toShip().length?toShip().length:''}</em>`:'')});
  $('#mset').innerHTML=ICON.gear+'<span>Réglages</span>';
  $('#gear').innerHTML=ICON.gear;
  $('#fab').innerHTML=ICON.plus;$('#fab').hidden=view!=='sale';
- $('#view').innerHTML=view==='home'?home():listView();
+ if(view==='home') $('#view').innerHTML=home();
+ else if(view==='orders') $('#view').innerHTML=ordersView();
+ else $('#view').innerHTML=listView();
  applyPref();
- if(view==='home')drawChart();else list();
+ if(view==='home') drawChart();
+ else if(view==='orders') bindOrders();
+ else list();
 }
 function go(v){view=v;S={q:'',sort:'new',f:'all',per:'all'};render();scrollTo(0,0)}
 
@@ -372,6 +388,64 @@ function drawChart(){
 }
 let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{const b=$('#chart');if(b&&Math.abs(Math.round(b.clientWidth)-chartW)>2)drawChart()},150)});
 
+function ordersView(){
+ const all=sold();
+ const pendingShip=toShip();
+ const doneShip=shipped();
+ const pendingMoney=moneyPending();
+ const doneMoney=moneyReceived();
+ const sumPendingMoney=sum(pendingMoney,i=>i.sold);
+ const sumReceivedMoney=sum(doneMoney,i=>i.sold);
+ const sumTotal=sum(all,i=>i.sold);
+ const profitReal=sum(doneMoney,i=>i.sold-i.buy);
+ const fmtDate=d=>d?new Date(d).toLocaleDateString('fr-FR'):'';
+ return `<div class="hd"><div><h1>Commandes & Argent</h1><p class="sub">Suivi des envois et de l'argent — toujours en ligne via data.json</p></div></div>
+  <div class="stats" style="margin-top:0">
+    <div class="card"><small>Argent en attente</small><b>${eur(sumPendingMoney)}</b><span class="kpi">${ICON.wallet} <b>${pendingMoney.length} vente${pendingMoney.length>1?'s':''}</b> en attente</span></div>
+    <div class="card"><small>Argent reçu</small><b class="pos">${eur(sumReceivedMoney)}</b><span class="kpi">${ICON.euro} <b>${doneMoney.length} vente${doneMoney.length>1?'s':''}</b> encaissée${doneMoney.length>1?'s':''}</span></div>
+    <div class="card"><small>Argent total des ventes</small><b>${eur(sumTotal)}</b><span class="kpi">sur ${all.length} vente${all.length>1?'s':''}</span></div>
+    <div class="card"><small>Bénéfices réellement encaissés</small><b class="${profitReal<0?'neg':'pos'}">${eur(profitReal)}</b><span class="kpi">uniquement argent reçu</span></div>
+  </div>
+
+  <div class="orders-split">
+    <section class="card">
+      <div class="section-head"><h3>${ICON.truck} Commandes à envoyer</h3><span class="count ${pendingShip.length?'on':''}">${pendingShip.length} colis</span></div>
+      <p class="sub" style="margin-bottom:12px">${pendingShip.length?`Il reste <b>${pendingShip.length} colis</b> à envoyer`:'Aucun colis en attente — tout est expédié 🎉'}</p>
+      <div class="grid" id="grid-ship">${pendingShip.length?pendingShip.map(orderCardShip).join(''):`<div class="empty" style="padding:28px">Aucune commande à envoyer</div>`}</div>
+      ${doneShip.length?`<details style="margin-top:16px"><summary class="mini" style="cursor:pointer">Commandes envoyées (${doneShip.length}) — voir l'historique</summary><div class="grid" style="margin-top:12px">${doneShip.map(orderCardShipped).join('')}</div></details>`:''}
+    </section>
+    <section class="card">
+      <div class="section-head"><h3>${ICON.wallet} Argent en attente</h3><span class="count ${pendingMoney.length?'on':''}">${eur(sumPendingMoney)}</span></div>
+      <p class="sub" style="margin-bottom:12px">${pendingMoney.length?`<b>${eur(sumPendingMoney)}</b> en attente de réception`:'Aucun paiement en attente'}</p>
+      <div class="grid" id="grid-money">${pendingMoney.length?pendingMoney.map(orderCardMoney).join(''):`<div class="empty" style="padding:28px">Aucun argent en attente</div>`}</div>
+      ${doneMoney.length?`<details style="margin-top:16px"><summary class="mini" style="cursor:pointer">Argent reçu (${doneMoney.length}) — ${eur(sumReceivedMoney)} — voir l'historique</summary><div class="grid" style="margin-top:12px">${doneMoney.map(orderCardReceived).join('')}</div></details>`:''}
+    </section>
+  </div>`;
+}
+function orderCardShip(i){
+ return `<article class="item"><div class="ph">${i.photo?`<img src="${i.photo}" alt="" loading="lazy">`:ICON.img}<span class="badge o">À expédier</span></div>
+  <div class="bd"><h3 title="${esc(i.name)}">${esc(i.name)}</h3><dl><div><dt>Prix de vente</dt><dd>${eur(i.sold)}</dd></div><div><dt>Vendu le</dt><dd>${esc(i.soldAt||'')}</dd></div></dl>
+  <div class="act"><button class="btn sm" data-a="ship" data-id="${i.id}">${ICON.truck} Expédié</button><button class="btn sm sec" data-a="edit" data-id="${i.id}">Modifier</button></div></div></article>`;
+}
+function orderCardShipped(i){
+ return `<article class="item" style="opacity:.9"><div class="ph">${i.photo?`<img src="${i.photo}" alt="" loading="lazy">`:ICON.img}<span class="badge g">Envoyé${i.shippedAt?' le '+esc(i.shippedAt):''}</span></div>
+  <div class="bd"><h3 title="${esc(i.name)}">${esc(i.name)}</h3><dl><div><dt>Prix de vente</dt><dd>${eur(i.sold)}</dd></div><div><dt>Expédié</dt><dd>${esc(i.shippedAt||'')}</dd></div></dl>
+  <div class="act"><button class="btn sm sec" data-a="unship" data-id="${i.id}">Annuler l'envoi</button></div></div></article>`;
+}
+function orderCardMoney(i){
+ return `<article class="item"><div class="ph">${i.photo?`<img src="${i.photo}" alt="" loading="lazy">`:ICON.img}<span class="badge y">Paiement en attente</span></div>
+  <div class="bd"><h3 title="${esc(i.name)}">${esc(i.name)}</h3><dl><div><dt>Prix de vente</dt><dd>${eur(i.sold)}</dd></div><div><dt>Bénéfice</dt><dd class="${(i.sold-i.buy)<0?'neg':'pos'}">${eur(i.sold-i.buy)}</dd></div></dl>
+  <div class="act"><button class="btn sm" data-a="receive" data-id="${i.id}">${ICON.euro} Argent reçu</button></div></div></article>`;
+}
+function orderCardReceived(i){
+ return `<article class="item" style="opacity:.9"><div class="ph">${i.photo?`<img src="${i.photo}" alt="" loading="lazy">`:ICON.img}<span class="badge g">Encaissé${i.receivedAt?' le '+esc(i.receivedAt):''}</span></div>
+  <div class="bd"><h3 title="${esc(i.name)}">${esc(i.name)}</h3><dl><div><dt>Prix de vente</dt><dd>${eur(i.sold)}</dd></div><div><dt>Encaissé</dt><dd>${esc(i.receivedAt||'')}</dd></div></dl>
+  <div class="act"><button class="btn sm sec" data-a="unreceive" data-id="${i.id}">Annuler</button></div></div></article>`;
+}
+function bindOrders(){
+ // aucune liaison supplémentaire nécessaire, les boutons sont gérés par le delegate global
+}
+
 function listView(){
  const sale=view==='sale';
  return `<div class="hd"><div><h1>${sale?'À vendre':'Vendus'}</h1><p class="sub" id="cnt"></p></div>${sale?'<button class="btn" data-a="add">Ajouter un article</button>':''}</div>
@@ -424,7 +498,7 @@ function sellForm(id){
  const it=D.items.find(i=>i.id===id);
  dlg.innerHTML=`<h2>Marquer comme vendu</h2><p class="sub">${esc(it.name)}</p><form id="f"><div class="row"><label class="fld">Prix de vente (€)<input name="p" type="number" inputmode="decimal" step="0.01" min="0" required value="${it.want}" autofocus></label><label class="fld">Date<input name="d" type="date" required value="${today()}"></label></div>
  <div class="foot"><button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn">Confirmer la vente</button></div></form>`;
- $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);Object.assign(it,{status:'sold',sold:num(v.get('p')),soldAt:v.get('d')});save();render();dlg.close();toast('Article déplacé vers « Vendus »')};
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);Object.assign(it,{status:'sold',sold:num(v.get('p')),soldAt:v.get('d'),shipped:false,received:false});save();render();dlg.close();toast('Article déplacé vers « Vendus »')};
  dlg.showModal();
 }
 function cfgForm(){
@@ -472,10 +546,14 @@ document.addEventListener('click',e=>{
   theme:()=>setPref({theme:isDark()?'light':'dark'}),
   rmph:()=>{tmp='';$('#up').innerHTML=upHtml();t.remove()},
   del:()=>{if(confirm(`Supprimer « ${it.name} » ?`)){D.items=D.items.filter(i=>i!==it);save();render();toast('Article supprimé')}},
-  unsell:()=>{it.status='sale';delete it.sold;delete it.soldAt;save();render();toast('Article remis en vente')},
+  unsell:()=>{it.status='sale';delete it.sold;delete it.soldAt;delete it.shipped;delete it.shippedAt;delete it.received;delete it.receivedAt;save();render();toast('Article remis en vente')},
+  ship:()=>{it.shipped=true;it.shippedAt=today();save();render();toast('Commande expédiée 📦')},
+  unship:()=>{it.shipped=false;delete it.shippedAt;save();render();toast('Envoi annulé')},
+  receive:()=>{it.received=true;it.receivedAt=today();save();render();toast('Argent encaissé 💰')},
+  unreceive:()=>{it.received=false;delete it.receivedAt;save();render();toast('Réception annulée')},
   sync:()=>pull(),
   reload:()=>pull(),
-  export:()=>{ const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a');a.href=u;a.download='data.json';a.click();URL.revokeObjectURL(u); toast('Export téléchargé')})[d.a]();
+  export:()=>{ const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a');a.href=u;a.download='data.json';a.click();URL.revokeObjectURL(u); toast('Export téléchargé')}})[d.a]();
 });
 document.addEventListener('input',e=>{
  if(e.target.id==='cacc')return setPref({accent:e.target.value});
