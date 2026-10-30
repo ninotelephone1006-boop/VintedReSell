@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resell – Dashboard Vinted</title>
+<style>
+:root{--bg:#f5f5f7;--card:#fff;--tx:#1d1d1f;--mu:#86868b;--bl:#0071e3;--gr:#248a3d;--rd:#d70015;--ln:#e5e5ea;--fill:#f2f2f7}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+aside{width:236px;position:sticky;top:0;height:100vh;padding:24px 14px;background:rgba(255,255,255,.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-right:1px solid var(--ln);display:flex;flex-direction:column;gap:4px;z-index:5}
+.brand{font-weight:700;font-size:19px;letter-spacing:-.02em;padding:4px 12px 20px}
+.nav{display:flex;align-items:center;gap:10px;border:0;background:none;padding:9px 12px;border-radius:10px;cursor:pointer;text-align:left;width:100%;transition:background .2s,color .2s}
+.nav:hover{background:#0000000a}.nav.on{background:var(--bl);color:#fff}
+.nav em{margin-left:auto;font-style:normal;font-size:12px;opacity:.7}
+main{flex:1;min-width:0;padding:22px clamp(16px,4vw,44px) 60px;max-width:1180px}
+.top{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:6px}
+.pill{display:inline-flex;align-items:center;gap:8px;border:0;background:#fff;border-radius:99px;padding:6px 13px;font-size:13px;cursor:pointer;box-shadow:0 1px 2px #0000000f}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--mu)}
+.pill.ok i{background:#34c759}.pill.busy i{background:#ff9f0a;animation:pulse 1s infinite}.pill.err i{background:#ff3b30}
+@keyframes pulse{50%{opacity:.3}}
+.ibtn{border:0;background:#fff;border-radius:50%;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 2px #0000000f}
+h1{font-size:32px;font-weight:700;letter-spacing:-.03em}
+h2{font-size:19px;letter-spacing:-.02em}
+.sub{color:var(--mu);margin-top:2px}
+.hd{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+#view{animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(6px)}}
+.card{background:var(--card);border-radius:20px;padding:22px;box-shadow:0 1px 2px #0000000a,0 8px 24px #0000000a;margin-bottom:18px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0 18px}
+.stats .card{margin:0}.stats small{color:var(--mu);font-size:13px}
+.stats b{display:block;font-size:28px;letter-spacing:-.03em;margin-top:4px;font-variant-numeric:tabular-nums}
+.pos{color:var(--gr)}.neg{color:var(--rd)}
+.row{display:flex;gap:12px}.row>*{flex:1}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.leg{display:flex;gap:14px;color:var(--mu);font-size:13px;margin-top:4px}.leg i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.seg{display:inline-flex;background:#e8e8ed;border-radius:10px;padding:2px}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:.2s}
+.seg .on{background:#fff;box-shadow:0 1px 3px #0002}
+.chart{position:relative;touch-action:pan-y}.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.tip{position:absolute;top:0;transform:translateX(-50%);background:#1d1d1fe6;color:#fff;border-radius:10px;padding:8px 11px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap}
+.tip b{display:block;margin-bottom:2px}
+.bar{height:10px;background:var(--fill);border-radius:9px;overflow:hidden;margin:14px 0 8px}
+.bar div{height:100%;background:var(--bl);border-radius:9px;width:0;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.goal{display:flex;gap:10px;align-items:center}
+.btn{border:0;background:var(--bl);color:#fff;padding:9px 18px;border-radius:10px;cursor:pointer;font-weight:500;transition:filter .2s,transform .1s}
+.btn:hover{filter:brightness(1.08)}.btn:active{transform:scale(.97)}
+.btn.sec{background:var(--fill);color:var(--tx)}.btn.sm{padding:6px 12px;font-size:13px}.btn.red{background:var(--fill);color:var(--rd)}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:0 12px;color:var(--mu);box-shadow:0 1px 2px #0000000a}
+.search input{border:0;outline:0;background:none;padding:9px 0;width:100%;color:var(--tx)}
+select,.fld input{background:var(--fill);border:0;border-radius:10px;padding:9px 12px;outline:0}
+.tools select{background:#fff;box-shadow:0 1px 2px #0000000a}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--bl);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.item{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 1px 2px #0000000a,0 8px 24px #0000000a;transition:transform .25s,box-shadow .25s;animation:in .35s ease both}
+.item:hover{transform:translateY(-3px);box-shadow:0 14px 34px #00000018}
+.ph{position:relative;aspect-ratio:1;background:var(--fill);display:grid;place-items:center;color:#c7c7cc}
+.ph svg{width:44px;height:44px}.ph img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.badge{position:absolute;top:10px;left:10px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;backdrop-filter:blur(8px)}
+.badge.b{background:#e8f1fd;color:var(--bl)}.badge.g{background:#e3f6e8;color:var(--gr)}
+.bd{padding:14px 16px 16px}.bd h3{font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+dl{margin:10px 0 14px;display:grid;gap:4px}dl div{display:flex;justify-content:space-between;font-size:14px}dt{color:var(--mu)}dd{font-weight:600;font-variant-numeric:tabular-nums}
+.act{display:flex;gap:6px;flex-wrap:wrap}.act .btn:first-child{flex:1}
+.empty{grid-column:1/-1;text-align:center;color:var(--mu);padding:70px 20px;background:#fff;border-radius:20px}
+dialog{border:0;border-radius:22px;padding:26px;width:min(440px,92vw);box-shadow:0 30px 80px #0004;animation:pop .25s cubic-bezier(.2,.9,.3,1.2)}
+dialog::backdrop{background:#0004;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+@keyframes pop{from{opacity:0;transform:scale(.94)}}
+dialog form{display:grid;gap:14px;margin-top:16px}
+.fld{display:grid;gap:5px;font-size:13px;color:var(--mu)}.fld input{color:var(--tx);font-size:15px;width:100%}
+.up{display:grid;place-items:center;aspect-ratio:16/9;border-radius:14px;background:var(--fill);color:var(--mu);cursor:pointer;overflow:hidden;border:1.5px dashed #d1d1d6;transition:border-color .2s;font-size:14px}
+.up:hover,.up.drag{border-color:var(--bl)}.up img{width:100%;height:100%;object-fit:cover}
+.foot{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+.note{font-size:13px;color:var(--mu)}
+#toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#1d1d1f;color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;pointer-events:none;transition:.3s;z-index:50}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:820px){
+ body{flex-direction:column}
+ aside{position:fixed;bottom:0;top:auto;width:100%;height:auto;flex-direction:row;justify-content:space-around;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--ln)}
+ .brand{display:none}.nav{flex-direction:column;gap:2px;font-size:11px;padding:6px 4px;justify-content:center;align-items:center;text-align:center}.nav em{display:none}
+ main{padding-bottom:100px;padding-top:calc(14px + env(safe-area-inset-top,0px))}
+ .stats{grid-template-columns:repeat(2,1fr)}h1{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.ln{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<aside>
+ <div class="brand">Resell</div>
+ <button class="nav" data-v="home"></button>
+ <button class="nav" data-v="sale"></button>
+ <button class="nav" data-v="sold"></button>
+</aside>
+<main>
+ <div class="top">
+  <button class="pill" id="pill" data-a="sync"><i></i><span></span></button>
+  <button class="ibtn" data-a="cfg" aria-label="Réglages de synchronisation" id="gear"></button>
+ </div>
+ <div id="view"></div>
+</main>
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+
+<script>
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+const I=p=>`<svg viewBox="0 0 24 24">${p}</svg>`;
+const ICON={home:I('<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),sale:I('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1"/>'),sold:I('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>'),search:I('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),img:I('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5L5 21"/>'),gear:I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>')};
+const eur=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n||0);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>fmt(new Date());
+const num=v=>parseFloat(String(v).replace(',','.'))||0;
+const sum=(a,f)=>a.reduce((t,i)=>t+f(i),0);
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+
+let D=norm(JSON.parse(ls.get('vd_data')||'null')),cfg=JSON.parse(ls.get('vd_cfg')||'{}'),view='home',range='7',S={q:'',sort:'new',f:'all',per:'all'},tmp='',loaded=false;
+function norm(j){return{settings:{goal:0,...(j&&j.settings)},items:Array.isArray(j&&j.items)?j.items:[]}}
+const sold=()=>D.items.filter(i=>i.status==='sold'),onSale=()=>D.items.filter(i=>i.status!=='sold');
+
+/* ---------- Synchronisation GitHub (via Cloudflare Worker) ---------- */
+let timer,busy=false,dirty=false;
+const pill=$('#pill');
+function setSt(c,t){pill.className='pill '+c;$('span',pill).textContent=t}
+const api=(m,b)=>fetch(cfg.url.replace(/\/$/,'')+'/data',{method:m,headers:{'X-Auth':cfg.pass||'','Content-Type':'application/json'},body:b});
+async function pull(){
+ if(!cfg.url){loaded=true;setSt('','Local uniquement');return}
+ setSt('busy','Chargement…');
+ try{
+  const r=await api('GET');if(!r.ok)throw r.status;
+  const j=await r.json();loaded=true;
+  if(j&&Array.isArray(j.items)){D=norm(j);ls.set('vd_data',JSON.stringify(D));setSt('ok','Synchronisé')}else push();
+ }catch(e){setSt('err',e===401?'Mot de passe refusé':'Hors ligne — réessayer')}
+ render();
+}
+function save(){
+ ls.set('vd_data',JSON.stringify(D));
+ if(!cfg.url||!loaded)return;
+ setSt('busy','Synchronisation…');clearTimeout(timer);timer=setTimeout(push,700);
+}
+async function push(){
+ if(busy){dirty=true;return}busy=true;
+ try{const r=await api('PUT',JSON.stringify(D));if(!r.ok)throw r.status;setSt('ok','Synchronisé')}
+ catch(e){setSt('err','Échec — réessayer')}
+ busy=false;if(dirty){dirty=false;push()}
+}
+
+/* ---------- Rendu ---------- */
+function render(){
+ $$('.nav').forEach(b=>{const v=b.dataset.v;b.classList.toggle('on',v===view);
+  b.innerHTML=ICON[v]+({home:'Accueil',sale:'À vendre',sold:'Vendus'})[v]+(v==='sale'?`<em>${onSale().length}</em>`:v==='sold'?`<em>${sold().length}</em>`:'')});
+ $('#gear').innerHTML=ICON.gear;
+ $('#view').innerHTML=view==='home'?home():listView();
+ if(view==='home')drawChart();else list();
+}
+function go(v){view=v;S={q:'',sort:'new',f:'all',per:'all'};render();scrollTo(0,0)}
+
+function home(){
+ const s=sold(),rev=sum(s,i=>i.sold),pro=sum(s,i=>i.sold-i.buy),m=today().slice(0,7),mp=sum(s.filter(i=>(i.soldAt||'').startsWith(m)),i=>i.sold-i.buy),g=D.settings.goal||0,pct=g?Math.max(0,Math.min(100,mp/g*100)):0;
+ const st=[['Chiffre d’affaires',eur(rev)],['Bénéfices',eur(pro),pro<0?'neg':''],['Articles en stock',onSale().length],['Articles vendus',s.length]];
+ return `<div class="hd"><div><h1>Accueil</h1><p class="sub">Vue d’ensemble de votre activité Vinted</p></div></div>
+ <div class="stats" style="margin-top:0">${st.map(x=>`<div class="card"><small>${x[0]}</small><b class="${x[2]||''}">${x[1]}</b></div>`).join('')}</div>
+ <section class="card"><div class="chead"><div><h2>Performance</h2><div class="leg"><span><i style="background:var(--bl)"></i>Chiffre d’affaires</span><span><i style="background:#34c759"></i>Bénéfices</span></div></div>
+ <div class="seg">${[['7','7 jours'],['30','30 jours'],['12','12 mois']].map(r=>`<button data-r="${r[0]}" class="${range===r[0]?'on':''}">${r[1]}</button>`).join('')}</div></div>
+ <div class="chart" id="chart"></div></section>
+ <section class="card"><div class="chead"><div><h2>Objectif mensuel</h2><p class="sub">Bénéfices réalisés ce mois-ci</p></div>
+ <div class="goal"><label class="note" for="goal">Objectif (€)</label><div class="fld" style="width:110px"><input id="goal" type="number" min="0" step="10" value="${g||''}" placeholder="0"></div></div></div>
+ <div class="bar"><div style="width:0" data-w="${pct}"></div></div>
+ <div class="row note"><span>${eur(mp)} gagnés</span><span style="text-align:right">${g?Math.round(pct)+' % de '+eur(g):'Définissez un objectif pour suivre votre progression'}</span></div></section>`;
+}
+
+function series(){
+ const s=sold().filter(i=>i.soldAt),n=range==='12'?12:+range,B=[],now=new Date();
+ for(let k=n-1;k>=0;k--){
+  const d=new Date(now.getFullYear(),now.getMonth(),range==='12'?1:now.getDate(),12);
+  range==='12'?d.setMonth(d.getMonth()-k):d.setDate(d.getDate()-k);
+  const key=range==='12'?fmt(d).slice(0,7):fmt(d),f=s.filter(i=>i.soldAt.startsWith(key));
+  B.push({lab:range==='12'?d.toLocaleDateString('fr-FR',{month:'short'}):`${d.getDate()}/${d.getMonth()+1}`,tip:range==='12'?d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}):d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}),rev:sum(f,i=>i.sold),pro:sum(f,i=>i.sold-i.buy),n:f.length});
+ }
+ return B;
+}
+function drawChart(){
+ const box=$('#chart');if(!box)return;
+ $$('.bar div').forEach(b=>requestAnimationFrame(()=>b.style.width=b.dataset.w+'%'));
+ const B=series(),n=B.length,W=720,H=270,L=56,R=14,T=14,Bt=30;
+ const mx=Math.max(1,...B.map(b=>Math.max(b.rev,b.pro))),mn=Math.min(0,...B.map(b=>b.pro)),x=i=>L+i*(W-L-R)/(n-1),y=v=>T+(mx-v)/(mx-mn)*(H-T-Bt);
+ const path=k=>B.map((b,i)=>{const X=x(i),Y=y(b[k]);if(!i)return`M${X},${Y}`;const p=x(i-1),q=y(B[i-1][k]);return`C${(p+X)/2},${q} ${(p+X)/2},${Y} ${X},${Y}`}).join(' ');
+ const grid=[0,1,2,3].map(k=>{const v=mn+(mx-mn)*k/3;return`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#e5e5ea"/><text x="${L-10}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#86868b">${Math.round(v)} €</text>`}).join('');
+ const step=Math.ceil(n/7),labs=B.map((b,i)=>(n-1-i)%step===0?`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#86868b">${b.lab}</text>`:'').join('');
+ const any=B.some(b=>b.n);
+ box.innerHTML=`<svg viewBox="0 0 ${W} ${H}"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0071e3" stop-opacity=".18"/><stop offset="1" stop-color="#0071e3" stop-opacity="0"/></linearGradient></defs>${grid}${labs}
+ <path d="${path('rev')} L${x(n-1)},${y(mn)} L${x(0)},${y(mn)}Z" fill="url(#g)"/>
+ <path class="ln" pathLength="1" d="${path('rev')}" stroke="#0071e3"/><path class="ln" pathLength="1" d="${path('pro')}" stroke="#34c759"/>
+ <line id="gd" y1="${T}" y2="${H-Bt}" stroke="#c7c7cc" opacity="0"/><circle id="d1" r="5" fill="#fff" stroke="#0071e3" stroke-width="2.5" opacity="0"/><circle id="d2" r="5" fill="#fff" stroke="#34c759" stroke-width="2.5" opacity="0"/>
+ ${any?'':`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#86868b" font-size="14">Aucune vente sur cette période</text>`}</svg><div class="tip" id="tip"></div>`;
+ const tip=$('#tip');
+ box.onpointermove=e=>{const r=box.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*W,i=Math.max(0,Math.min(n-1,Math.round((px-L)/((W-L-R)/(n-1))))),b=B[i];
+  $('#gd').setAttribute('x1',x(i));$('#gd').setAttribute('x2',x(i));$('#d1').setAttribute('cx',x(i));$('#d1').setAttribute('cy',y(b.rev));$('#d2').setAttribute('cx',x(i));$('#d2').setAttribute('cy',y(b.pro));
+  ['gd','d1','d2'].forEach(k=>$('#'+k).setAttribute('opacity',1));
+  tip.innerHTML=`<b>${b.tip}</b>CA ${eur(b.rev)}<br>Bénéfice ${eur(b.pro)}<br>${b.n} vente${b.n>1?'s':''}`;tip.style.left=Math.max(14,Math.min(86,x(i)/W*100))+'%';tip.style.opacity=1};
+ box.onpointerleave=()=>{tip.style.opacity=0;['gd','d1','d2'].forEach(k=>$('#'+k).setAttribute('opacity',0))};
+}
+
+function listView(){
+ const sale=view==='sale';
+ return `<div class="hd"><div><h1>${sale?'À vendre':'Vendus'}</h1><p class="sub" id="cnt"></p></div>${sale?'<button class="btn" data-a="add">Ajouter un article</button>':''}</div>
+ <div class="tools"><label class="search">${ICON.search}<input id="q" type="search" placeholder="Rechercher un article" value="${esc(S.q)}"></label>
+ ${sale?`<div class="seg">${[['all','Tous'],['pos','Bénéfice +'],['neg','Perte']].map(f=>`<button data-f="${f[0]}" class="${S.f===f[0]?'on':''}">${f[1]}</button>`).join('')}</div>`
+ :`<select id="per">${[['all','Toute la période'],['7','7 derniers jours'],['30','30 derniers jours'],['365','12 derniers mois']].map(o=>`<option value="${o[0]}" ${S.per===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select>`}
+ <select id="sort">${[['new','Plus récents'],['pro','Bénéfice décroissant'],['price','Prix croissant'],['name','Nom A–Z']].map(o=>`<option value="${o[0]}" ${S.sort===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div><div class="grid" id="grid"></div>`;
+}
+const profit=i=>i.status==='sold'?i.sold-i.buy:i.want-i.buy;
+function list(){
+ const sale=view==='sale',all=sale?onSale():sold(),q=S.q.trim().toLowerCase();
+ let a=all.filter(i=>i.name.toLowerCase().includes(q));
+ if(sale&&S.f==='pos')a=a.filter(i=>profit(i)>=0);if(sale&&S.f==='neg')a=a.filter(i=>profit(i)<0);
+ if(!sale&&S.per!=='all'){const d=new Date();d.setDate(d.getDate()-S.per);a=a.filter(i=>(i.soldAt||'')>=fmt(d))}
+ const price=i=>sale?i.want:i.sold,date=i=>sale?(i.created||0):(i.soldAt||'')+String(i.created||0);
+ a.sort(S.sort==='pro'?(x,y)=>profit(y)-profit(x):S.sort==='price'?(x,y)=>price(x)-price(y):S.sort==='name'?(x,y)=>x.name.localeCompare(y.name,'fr'):(x,y)=>date(y)>date(x)?1:-1);
+ $('#cnt').textContent=`${a.length} article${a.length>1?'s':''}`+(sale&&!sale?'':sale?` · ${eur(sum(a,profit))} de bénéfice potentiel`:` · ${eur(sum(a,profit))} de bénéfice`);
+ $('#grid').innerHTML=a.length?a.map(card).join(''):`<div class="empty">${all.length?'Aucun article ne correspond à votre recherche.':sale?'Aucun article à vendre. Ajoutez votre premier article pour commencer.':'Aucune vente pour le moment. Marquez un article comme vendu depuis « À vendre ».'}</div>`;
+}
+function card(i){
+ const s=i.status==='sold',p=profit(i);
+ return `<article class="item"><div class="ph">${i.photo?`<img src="${i.photo}" alt="" loading="lazy">`:ICON.img}<span class="badge ${s?'g':'b'}">${s?'Vendu':'À vendre'}</span></div>
+ <div class="bd"><h3 title="${esc(i.name)}">${esc(i.name)}</h3><dl><div><dt>Prix d’achat</dt><dd>${eur(i.buy)}</dd></div><div><dt>${s?'Prix de vente':'Prix souhaité'}</dt><dd>${eur(s?i.sold:i.want)}</dd></div><div><dt>${s?'Bénéfice réalisé':'Bénéfice potentiel'}</dt><dd class="${p<0?'neg':'pos'}">${eur(p)}</dd></div></dl>
+ <div class="act">${s?`<button class="btn sm" data-a="edit" data-id="${i.id}">Modifier</button><button class="btn sm sec" data-a="unsell" data-id="${i.id}">Remettre en vente</button>`:`<button class="btn sm" data-a="sell" data-id="${i.id}">Marquer vendu</button><button class="btn sm sec" data-a="edit" data-id="${i.id}">Modifier</button>`}<button class="btn sm red" data-a="del" data-id="${i.id}">Supprimer</button></div></div></article>`;
+}
+
+/* ---------- Formulaires ---------- */
+const dlg=$('#dlg');
+const shrink=f=>new Promise((ok,ko)=>{const i=new Image,u=URL.createObjectURL(f);i.onerror=ko;i.onload=()=>{const k=Math.min(1,720/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.75))};i.src=u});
+const upHtml=()=>tmp?`<img src="${tmp}" alt="">`:'Ajouter une photo';
+async function setPhoto(f){if(!f||!f.type.startsWith('image/'))return;try{tmp=await shrink(f);$('#up').innerHTML=upHtml()}catch(e){toast('Image illisible')}}
+function itemForm(id){
+ const it=id&&D.items.find(i=>i.id===id),s=it&&it.status==='sold';tmp=it?it.photo||'':'';
+ dlg.innerHTML=`<h2>${it?'Modifier l’article':'Nouvel article'}</h2><form id="f">
+ <label class="up" id="up">${upHtml()}</label><input type="file" id="file" accept="image/*" hidden>
+ <label class="fld">Nom<input name="name" required maxlength="80" value="${it?esc(it.name):''}" placeholder="Ex. Veste en jean Levi’s"></label>
+ <div class="row"><label class="fld">Prix d’achat (€)<input name="buy" type="number" step="0.01" min="0" required value="${it?it.buy:''}"></label>
+ ${s?`<label class="fld">Prix de vente (€)<input name="sold" type="number" step="0.01" min="0" required value="${it.sold}"></label>`:`<label class="fld">Prix souhaité (€)<input name="want" type="number" step="0.01" min="0" required value="${it?it.want:''}"></label>`}</div>
+ ${s?`<label class="fld">Date de vente<input name="date" type="date" required value="${it.soldAt||today()}"></label>`:''}
+ <div class="foot">${tmp?'<button type="button" class="btn sec" data-a="rmph">Retirer la photo</button>':''}<button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn">Enregistrer</button></div></form>`;
+ const up=$('#up');up.onclick=()=>$('#file').click();$('#file').onchange=e=>setPhoto(e.target.files[0]);
+ up.ondragover=e=>{e.preventDefault();up.classList.add('drag')};up.ondragleave=()=>up.classList.remove('drag');up.ondrop=e=>{e.preventDefault();up.classList.remove('drag');setPhoto(e.dataTransfer.files[0])};
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target),o={name:v.get('name').trim(),buy:num(v.get('buy')),photo:tmp};
+  if(it){Object.assign(it,o);if(s){it.sold=num(v.get('sold'));it.soldAt=v.get('date')}else it.want=num(v.get('want'))}
+  else D.items.push({id:crypto.randomUUID(),status:'sale',created:Date.now(),want:num(v.get('want')),...o});
+  save();render();dlg.close();toast(it?'Modifications enregistrées':'Article ajouté')};
+ dlg.showModal();
+}
+function sellForm(id){
+ const it=D.items.find(i=>i.id===id);
+ dlg.innerHTML=`<h2>Marquer comme vendu</h2><p class="sub">${esc(it.name)}</p><form id="f"><div class="row"><label class="fld">Prix de vente (€)<input name="p" type="number" step="0.01" min="0" required value="${it.want}" autofocus></label><label class="fld">Date<input name="d" type="date" required value="${today()}"></label></div>
+ <div class="foot"><button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn">Confirmer la vente</button></div></form>`;
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);Object.assign(it,{status:'sold',sold:num(v.get('p')),soldAt:v.get('d')});save();render();dlg.close();toast('Article déplacé vers « Vendus »')};
+ dlg.showModal();
+}
+function cfgForm(){
+ dlg.innerHTML=`<h2>Synchronisation GitHub</h2><p class="note" style="margin-top:6px">Vos données sont enregistrées dans <b>data.json</b> via votre proxy sécurisé. Aucun token GitHub n’est stocké dans cette page.</p>
+ <form id="f"><label class="fld">URL du proxy (Cloudflare Worker)<input name="u" type="url" placeholder="https://resell.votre-nom.workers.dev" value="${esc(cfg.url||'')}"></label>
+ <label class="fld">Mot de passe<input name="p" type="password" autocomplete="current-password" value="${esc(cfg.pass||'')}"></label>
+ <div class="foot"><button type="button" class="btn sec" data-a="close">Annuler</button><button class="btn">Enregistrer et connecter</button></div></form>`;
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);cfg={url:v.get('u').trim(),pass:v.get('p')};ls.set('vd_cfg',JSON.stringify(cfg));loaded=false;dlg.close();pull()};
+ dlg.showModal();
+}
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
+
+/* ---------- Événements ---------- */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-v],[data-a],[data-r],[data-f]');if(!t)return;
+ const d=t.dataset,it=d.id&&D.items.find(i=>i.id===d.id);
+ if(d.v)return go(d.v);
+ if(d.r){range=d.r;$$('[data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===range));return drawChart()}
+ if(d.f){S.f=d.f;$$('[data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===S.f));return list()}
+ ({add:()=>itemForm(),edit:()=>itemForm(d.id),sell:()=>sellForm(d.id),cfg:cfgForm,close:()=>dlg.close(),
+  rmph:()=>{tmp='';$('#up').innerHTML=upHtml();t.remove()},
+  del:()=>{if(confirm(`Supprimer « ${it.name} » ?`)){D.items=D.items.filter(i=>i!==it);save();render();toast('Article supprimé')}},
+  unsell:()=>{it.status='sale';delete it.sold;delete it.soldAt;save();render();toast('Article remis en vente')},
+  sync:()=>cfg.url?(loaded?push():pull()):cfgForm()})[d.a]();
+});
+document.addEventListener('input',e=>{
+ if(e.target.id==='q'){S.q=e.target.value;list()}
+ if(e.target.id==='goal'){D.settings.goal=Math.max(0,num(e.target.value));save();const g=D.settings.goal,m=today().slice(0,7),mp=sum(sold().filter(i=>(i.soldAt||'').startsWith(m)),i=>i.sold-i.buy),p=g?Math.max(0,Math.min(100,mp/g*100)):0;$('.bar div').style.width=p+'%';$('.row.note span:last-child').textContent=g?Math.round(p)+' % de '+eur(g):'Définissez un objectif pour suivre votre progression'}
+});
+document.addEventListener('change',e=>{if(e.target.id==='sort'){S.sort=e.target.value;list()}if(e.target.id==='per'){S.per=e.target.value;list()}});
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+
+render();pull();
+</script>
+</body>
+</html>
