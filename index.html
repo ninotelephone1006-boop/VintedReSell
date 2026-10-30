@@ -211,9 +211,27 @@ const num=v=>parseFloat(String(v).replace(',','.'))||0;
 const sum=(a,f)=>a.reduce((t,i)=>t+f(i),0);
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const jp=(k,d)=>{try{return JSON.parse(ls.get(k)||'null')||d}catch(e){return d}};
+const uid=()=>{try{if(crypto&&crypto.randomUUID)return crypto.randomUUID()}catch(e){}return 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,10)};
+
+/* Stockage local garanti : IndexedDB (photos incluses, grosse capacité)
+   avec miroir localStorage. Aucune configuration, aucun serveur requis. */
+const store={
+ db:null,
+ async init(){
+  try{
+   this.db=await new Promise((ok,ko)=>{
+    const r=indexedDB.open('resell',1);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv')};
+    r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error);r.onblocked=()=>ko(new Error('blocked'));
+   });
+  }catch(e){this.db=null;console.info('IndexedDB indisponible, repli sur localStorage',e&&e.message)}
+ },
+ read(k){return new Promise(ok=>{if(!this.db)return ok(null);try{const q=this.db.transaction('kv','readonly').objectStore('kv').get(k);q.onsuccess=()=>ok(q.result===undefined?null:q.result);q.onerror=()=>ok(null)}catch(e){ok(null)}})},
+ write(k,v){return new Promise(ok=>{if(!this.db)return ok(false);try{const q=this.db.transaction('kv','readwrite').objectStore('kv').put(v,k);q.onsuccess=()=>ok(true);q.onerror=()=>ok(false)}catch(e){ok(false)}})},
+};
 
 let D=norm(null),cfg=jp('vd_cfg',{}),pref={theme:'auto',accent:'#0071e3',...jp('vd_pref',{})},view='home',range='7',S={q:'',sort:'new',f:'all',per:'all'},tmp='',loaded=false;
-function norm(j){return{settings:{goal:0,...(j&&j.settings)},items:Array.isArray(j&&j.items)?j.items:[]}}
+function norm(j){return{settings:{goal:0,...(j&&j.settings)},items:Array.isArray(j&&j.items)?j.items:[],deleted:Array.isArray(j&&j.deleted)?j.deleted:[]}}
 const sold=()=>D.items.filter(i=>i.status==='sold'),onSale=()=>D.items.filter(i=>i.status!=='sold');
 const toShip=()=>sold().filter(i=>!i.shipped),shipped=()=>sold().filter(i=>!!i.shipped);
 const moneyPending=()=>sold().filter(i=>!i.received),moneyReceived=()=>sold().filter(i=>!!i.received);
@@ -245,79 +263,122 @@ function applyPref(){
 function setPref(o){pref={...pref,...o};ls.set('vd_pref',JSON.stringify(pref));applyPref()}
 mq.addEventListener&&mq.addEventListener('change',()=>{if(pref.theme==='auto')applyPref()});
 
-/* ---------- Synchronisation en ligne via data.json ---------- */
-let timer,busy=false,dirty=false;
+/* ---------- Sauvegarde : locale immédiate (zéro config) + synchro cloud optionnelle ---------- */
+let timer,busy=false,dirty=false,remoteWritable=true,lastSnap={},lastFail=0;
 const pill=$('#pill');
-function setSt(c,t){pill.className='pill '+c;$('span',pill).textContent=t}
+function setSt(c,t,title){pill.className='pill '+c;$('span',pill).textContent=t;pill.title=title||t}
 const DATA_URL='data.json';
 const WORKER_URL=()=> (cfg.workerUrl||'').trim().replace(/\/$/,'');
-function dataGetUrl(){
- const w=WORKER_URL();
- if(w) return w+'/data';
- return DATA_URL;
-}
-function dataPutUrl(){
- const w=WORKER_URL();
- if(w) return w+'/data';
- return DATA_URL;
-}
-async function pull(){
- setSt('busy','Chargement…');
+const remoteConfigured=()=>!!WORKER_URL();
+const dataUrl=()=>remoteConfigured()?WORKER_URL()+'/data':DATA_URL;
+const authHeaders=o=>{const h=o||{};if(remoteConfigured()&&cfg.workerAuth)h['X-Auth']=cfg.workerAuth;return h};
+
+/* Écrit D sur l'appareil : instantané, toujours disponible */
+let lsTimer;
+function mirrorLocal(){
  try{
-  const url=dataGetUrl()+(dataGetUrl().includes('?')?'&':'?')+'t='+Date.now();
-  const headers={};
-  if(WORKER_URL() && cfg.workerAuth) headers['X-Auth']=cfg.workerAuth;
-  const r=await fetch(url,{cache:'no-store',headers});
-  if(!r.ok) throw r.status;
-  let j;
-  try{ j=await r.json(); }catch{ j=null; }
-  // Supporte à la fois {items:[]} et {} vide
-  if(j && Array.isArray(j.items)){
-    D=norm(j);
-  } else if(j && (j.settings || j.items)){
-    D=norm(j);
-  } else if(!j || Object.keys(j).length===0){
-    // data.json vide → on garde D local et on pousse une première fois si possible
-    if(D.items.length===0 && !D.settings.goal) { /* rien à faire */ }
-  }
-  loaded=true;
-  setSt('ok','En ligne');
- }catch(e){
-  console.warn('pull error',e);
-  if(e===404) setSt('err','data.json introuvable');
-  else setSt('err','Hors ligne');
-  loaded=true;
- }
- render();
+  const j=JSON.stringify(D);
+  if(j.length<3e6)ls.set('vd_data',j);
+  else ls.set('vd_data',JSON.stringify({settings:D.settings,deleted:D.deleted,items:D.items.map(i=>({...i,photo:''}))}));
+ }catch(e){/* quota atteint : IndexedDB reste la référence */}
 }
+function persist(){
+ store.write('data',D);
+ clearTimeout(lsTimer);
+ lsTimer=setTimeout(mirrorLocal,700);
+}
+/* Signature légère d'un article (évite de sérialiser les photos à chaque frappe) */
+const sig=i=>[i.name,i.buy,i.want,i.sold,i.soldAt,i.status,i.shipped,i.received,i.shippedAt,i.receivedAt,i.created,(i.photo||'').length,(i.photo||'').slice(0,40),(i.photo||'').slice(-40)].join('|');
+const fp=d=>JSON.stringify([d.settings.goal,d.deleted.map(t=>t.id+':'+t.at).sort(),d.items.map(i=>i.id+':'+sig(i)).sort()]);
+/* Horodate uniquement les articles réellement modifiés (fusion multi-appareils) */
+function stamp(){
+ const now=Date.now(),snap={};
+ D.items.forEach(i=>{
+  if(!i.upd)i.upd=now;
+  const k=sig(i);
+  if(lastSnap[i.id]!==undefined&&lastSnap[i.id]!==k)i.upd=now;
+  snap[i.id]=k;
+ });
+ lastSnap=snap;
+}
+/* Fusion non destructive : rien n'est jamais écrasé par une lecture distante */
+function mergeData(a,b){
+ const A=norm(a),B=norm(b),tombs=new Map();
+ [...A.deleted,...B.deleted].forEach(t=>{if(t&&t.id&&(!tombs.has(t.id)||tombs.get(t.id)<(t.at||0)))tombs.set(t.id,t.at||0)});
+ const m=new Map();
+ A.items.forEach(i=>{if(i&&i.id)m.set(i.id,i)});
+ B.items.forEach(i=>{if(!i||!i.id)return;const p=m.get(i.id);if(!p||(i.upd||0)>(p.upd||0))m.set(i.id,i)});
+ const items=[...m.values()].filter(i=>{const at=tombs.get(i.id);return at===undefined||at<(i.upd||0)});
+ return norm({settings:{goal:A.settings.goal||B.settings.goal||0},items,deleted:[...tombs].map(([id,at])=>({id,at}))});
+}
+
 function save(){
- if(!loaded) return;
- setSt('busy','Synchronisation…');
+ stamp();
+ if(D.deleted.length)D.deleted=D.deleted.filter(t=>Date.now()-(t.at||0)<180*864e5).slice(-500);
+ persist();
+ setSt('ok','Enregistré','Enregistré sur cet appareil');
  clearTimeout(timer);
- timer=setTimeout(push,400);
+ if(loaded)timer=setTimeout(push,600);
 }
+
 async function push(){
+ if(!loaded)return;
+ if(!remoteConfigured()&&Date.now()-lastFail<60000)return; /* hôte non inscriptible : on ne réessaie pas en boucle */
  if(busy){dirty=true;return}
  busy=true;
- setSt('busy','Synchronisation…');
  try{
-  const url=dataPutUrl();
-  const headers={'Content-Type':'application/json'};
-  if(WORKER_URL() && cfg.workerAuth) headers['X-Auth']=cfg.workerAuth;
-  const body=JSON.stringify(D,null,2);
-  const r=await fetch(url,{method:'PUT',headers,body});
-  if(!r.ok) throw r.status;
-  setSt('ok','Synchronisé');
+  const r=await fetch(dataUrl(),{method:'PUT',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify(D,null,2)});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  remoteWritable=true;
+  setSt('ok','Synchronisé','Enregistré sur cet appareil et synchronisé');
  }catch(e){
-  console.warn('push error',e);
-  setSt('err','Erreur sauvegarde');
+  remoteWritable=false;lastFail=Date.now();
+  console.info('Synchro cloud optionnelle indisponible — la sauvegarde locale reste active.',e&&e.message);
+  setSt('ok','Enregistré','Enregistré sur cet appareil (aucune configuration nécessaire)');
+ }finally{
+  busy=false;
+  if(dirty){dirty=false;setTimeout(push,300)}
  }
- busy=false;
- if(dirty){dirty=false;push()}
 }
-// Re-synchronise quand on revient sur l'onglet (multi-appareils)
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && loaded) pull(); });
-setInterval(()=>{ if(loaded && !busy) pull(); }, 30000);
+
+async function pull(force){
+ if(!loaded)return;
+ if(!force&&!remoteConfigured()&&!remoteWritable)return;
+ try{
+  const u=dataUrl(),url=u+(u.includes('?')?'&':'?')+'t='+Date.now();
+  const r=await fetch(url,{cache:'no-store',headers:authHeaders()});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  if(!j||typeof j!=='object'||(!Array.isArray(j.items)&&!j.settings))throw new Error('format');
+  const merged=mergeData(D,j);
+  if(fp(merged)!==fp(D)){
+   D=merged;lastSnap={};D.items.forEach(i=>lastSnap[i.id]=sig(i));
+   persist();render();
+   if(remoteConfigured())setTimeout(push,100);
+  }
+  setSt('ok',remoteConfigured()?'Synchronisé':'Enregistré','Enregistré sur cet appareil');
+ }catch(e){
+  console.info('Lecture distante indisponible — les données locales sont conservées.',e&&e.message);
+  setSt('ok','Enregistré','Enregistré sur cet appareil');
+ }
+}
+// Re-synchronise quand on revient sur l'onglet (multi-appareils, optionnel)
+document.addEventListener('visibilitychange',()=>{ if(!loaded)return; if(document.visibilityState==='visible') pull(); else {clearTimeout(lsTimer);mirrorLocal() } });
+addEventListener('pagehide',()=>{if(loaded){clearTimeout(lsTimer);mirrorLocal()}});
+setInterval(()=>{ if(loaded&&!busy&&(remoteConfigured()||remoteWritable)) pull(); },30000);
+
+/* Charge les données de l'appareil au démarrage : l'app est utilisable sans rien configurer */
+async function init(){
+ await store.init();
+ let local=await store.read('data');
+ if(!local)local=jp('vd_data',null);
+ if(local&&typeof local==='object')D=norm(local);
+ D.items.forEach(i=>{if(!i.upd)i.upd=0;if(!i.id)i.id=uid()});
+ lastSnap={};D.items.forEach(i=>lastSnap[i.id]=sig(i));
+ loaded=true;
+ render();
+ pull(true);
+}
 
 /* ---------- Rendu ---------- */
 function render(){
@@ -490,7 +551,7 @@ function itemForm(id){
  up.ondragover=e=>{e.preventDefault();up.classList.add('drag')};up.ondragleave=()=>up.classList.remove('drag');up.ondrop=e=>{e.preventDefault();up.classList.remove('drag');setPhoto(e.dataTransfer.files[0])};
  $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target),o={name:v.get('name').trim(),buy:num(v.get('buy')),photo:tmp};
   if(it){Object.assign(it,o);if(s){it.sold=num(v.get('sold'));it.soldAt=v.get('date')}else it.want=num(v.get('want'))}
-  else D.items.push({id:crypto.randomUUID(),status:'sale',created:Date.now(),want:num(v.get('want')),...o});
+  else D.items.push({id:uid(),status:'sale',created:Date.now(),want:num(v.get('want')),...o});
   save();render();dlg.close();toast(it?'Modifications enregistrées':'Article ajouté')};
  dlg.showModal();
 }
@@ -510,25 +571,29 @@ function cfgForm(){
   <p class="lbl">Couleur secondaire</p>
   <div class="sws">${sws}<label class="sw custom" title="Couleur personnalisée" aria-label="Couleur personnalisée">${ICON.check}<input type="color" id="cacc" value="${isHex(pref.accent)?pref.accent:'#0071e3'}"></label></div>
  </section>
- <section class="set"><h3>Synchronisation</h3>
-  <p class="note">L'application est <b>toujours en ligne</b> via <b>data.json</b>. Lecture et écriture se font directement sur <code>data.json</code> (même dossier que <code>index.html</code>). Pour GitHub Pages, configure un Worker Cloudflare (voir <code>worker.js</code>) et indique son URL ci-dessous.</p>
+ <section class="set"><h3>Sauvegarde</h3>
+  <p class="note">Tout est enregistré <b>automatiquement sur cet appareil</b> : aucune configuration, aucun compte, rien à installer. Vos articles sont là au prochain démarrage, même sans connexion.</p>
   <div class="note" style="margin-top:10px;padding:10px 12px;background:var(--fill);border-radius:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <span style="width:8px;height:8px;border-radius:50%;background:var(--ac2);flex:none"></span>
-    <span>Mode : <b>En ligne</b> — <code>data.json</code></span>
-    <span style="margin-left:auto;font-size:12px;color:var(--mu)">${hasWorker? 'Worker configuré' : 'Sans Worker (fichier direct)'}</span>
+    <span>Sauvegarde locale <b>active</b></span>
+    <span style="margin-left:auto;font-size:12px;color:var(--mu)">${hasWorker? 'Synchro cloud : Worker' : 'Synchro cloud : inactive (optionnel)'}</span>
   </div>
-  <form id="f" style="margin-top:14px">
-    <label class="fld">URL du Worker (optionnel)<input name="w" placeholder="https://vintedresell.workers.dev" value="${esc(cfg.workerUrl||'')}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-    <label class="fld">Mot de passe Worker (X-Auth, optionnel)<input name="a" type="password" autocomplete="off" placeholder="••••••••" value="${esc(cfg.workerAuth||'')}"</label>
-    <p class="note">Laisse vide si ton hébergement autorise <code>PUT data.json</code>. Sur GitHub Pages, ce champ est requis pour enregistrer.</p>
-    <div class="foot"><button type="button" class="btn sec" data-a="close">Fermer</button><button class="btn">Enregistrer</button></div>
-  </form>
   <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn sec sm" data-a="reload">Recharger depuis data.json</button>
     <button class="btn sec sm" data-a="export">Exporter data.json</button>
+    <button class="btn sec sm" data-a="import">Importer un data.json</button>
   </div>
+  <details style="margin-top:16px">
+    <summary class="mini" style="cursor:pointer">Synchroniser entre plusieurs appareils (optionnel)</summary>
+    <p class="note" style="margin-top:10px">Pour retrouver les mêmes données sur un téléphone et un ordinateur, ajoute l'URL d'un Worker Cloudflare (fichier <code>worker.js</code>) et son mot de passe. Sans ça, l'application fonctionne normalement sur cet appareil — la synchronisation est un simple bonus.</p>
+    <form id="f" style="margin-top:12px">
+      <label class="fld">URL du Worker<input name="w" placeholder="https://vintedresell.workers.dev" value="${esc(cfg.workerUrl||'')}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+      <label class="fld">Mot de passe Worker (X-Auth)<input name="a" type="password" autocomplete="off" placeholder="••••••••" value="${esc(cfg.workerAuth||'')}"</label>
+      <div class="foot"><button type="button" class="btn sec" data-a="close">Fermer</button><button class="btn">Enregistrer</button></div>
+    </form>
+    <div style="margin-top:10px"><button class="btn sec sm" data-a="reload">Recharger depuis le cloud</button></div>
+  </details>
  </section>`;
- $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);cfg={workerUrl:v.get('w').trim().replace(/\/$/,''),workerAuth:v.get('a').trim()};ls.set('vd_cfg',JSON.stringify(cfg));dlg.close();toast('Réglages enregistrés');pull()};
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);cfg={workerUrl:v.get('w').trim().replace(/\/$/,''),workerAuth:v.get('a').trim()};ls.set('vd_cfg',JSON.stringify(cfg));dlg.close();toast('Réglages enregistrés');remoteWritable=true;lastFail=0;pull(true)};
  applyPref();dlg.showModal();
 }
 let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
@@ -545,14 +610,15 @@ document.addEventListener('click',e=>{
  ({add:()=>itemForm(),edit:()=>itemForm(d.id),sell:()=>sellForm(d.id),cfg:cfgForm,close:()=>dlg.close(),
   theme:()=>setPref({theme:isDark()?'light':'dark'}),
   rmph:()=>{tmp='';$('#up').innerHTML=upHtml();t.remove()},
-  del:()=>{if(confirm(`Supprimer « ${it.name} » ?`)){D.items=D.items.filter(i=>i!==it);save();render();toast('Article supprimé')}},
+  del:()=>{if(confirm(`Supprimer « ${it.name} » ?`)){D.deleted.push({id:it.id,at:Date.now()});delete lastSnap[it.id];D.items=D.items.filter(i=>i!==it);save();render();toast('Article supprimé')}},
   unsell:()=>{it.status='sale';delete it.sold;delete it.soldAt;delete it.shipped;delete it.shippedAt;delete it.received;delete it.receivedAt;save();render();toast('Article remis en vente')},
   ship:()=>{it.shipped=true;it.shippedAt=today();save();render();toast('Commande expédiée 📦')},
   unship:()=>{it.shipped=false;delete it.shippedAt;save();render();toast('Envoi annulé')},
   receive:()=>{it.received=true;it.receivedAt=today();save();render();toast('Argent encaissé 💰')},
   unreceive:()=>{it.received=false;delete it.receivedAt;save();render();toast('Réception annulée')},
-  sync:()=>pull(),
-  reload:()=>pull(),
+  sync:()=>pull(true),
+  reload:()=>pull(true),
+  import:()=>{const i=document.createElement('input');i.type='file';i.accept='application/json,.json';i.onchange=async()=>{const f=i.files&&i.files[0];if(!f)return;try{const j=JSON.parse(await f.text());if(!j||!Array.isArray(j.items))throw 0;j.items.forEach(x=>{if(x&&!x.id)x.id=uid();if(x)x.upd=Date.now()});D=mergeData(D,j);save();render();toast('Données importées')}catch(e){toast('Fichier data.json invalide')}};i.click()},
   export:()=>{ const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a');a.href=u;a.download='data.json';a.click();URL.revokeObjectURL(u); toast('Export téléchargé')}})[d.a]();
 });
 document.addEventListener('input',e=>{
@@ -563,7 +629,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{if(e.target.id==='sort'){S.sort=e.target.value;list()}if(e.target.id==='per'){S.per=e.target.value;list()}});
 dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
 
-applyPref();render();pull();
+applyPref();render();init();
 </script>
 </body>
 </html>
