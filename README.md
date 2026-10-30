@@ -1,17 +1,19 @@
 # Resell – Dashboard Vinted
 
-Dashboard statique : `index.html`, données dans `data.json`. Les articles restent aussi enregistrés localement dans le navigateur.
+Fichiers : `index.html` (application) et `data.json` (données).
 
-## Installation et synchronisation directe
-1. Placez `index.html` et `data.json` à la racine de votre dépôt GitHub **public** et activez GitHub Pages dans **Settings → Pages**.
-2. Créez un token GitHub fine-grained limité à ce dépôt, avec la permission **Contents : Read and write**. Les règles de protection de branche doivent autoriser les commits de ce token.
-3. Ouvrez le dashboard, puis ⚙ → **GitHub direct**. Indiquez `propriétaire/dépôt`, la branche (par exemple `main`) et le token, puis connectez-vous.
-4. Les modifications sont sauvegardées dans `data.json`. Le bouton d'état permet de réessayer une synchronisation. Si le fichier distant a changé depuis son chargement, la sauvegarde est refusée pour éviter de l'écraser : les données locales restent dans le navigateur. Réconciliez les données avant de recharger la page ou de reconnecter le dépôt.
+## Installation (≈5 min)
+1. **Dépôt public** : placez `index.html` et `data.json` à la racine, puis *Settings → Pages → Deploy from branch*.
+2. **Token** (uniquement pour *enregistrer*) : *Settings → Developer settings → Fine-grained tokens*, accès limité à ce dépôt, permission **Contents : Read and write**.
+3. Ouvrez le dashboard → **Réglages** (⚙ ou onglet « Réglages » sur mobile) → saisissez `utilisateur/dépôt`, la branche et le token → *Enregistrer et connecter*.
 
-Le token est stocké dans le stockage local du navigateur, jamais dans `data.json`. Utilisez un appareil personnel, limitez les permissions et révoquez le token si nécessaire. Tout script exécuté sur cette origine peut accéder au token. **Dans un dépôt public, `data.json` et les photos sont lisibles par tous**, y compris dans l'historique Git.
+Sur `https://utilisateur.github.io/depot/`, le dépôt est détecté automatiquement : la lecture fonctionne sans rien configurer.
 
-## Personnalisation et mobile
-Dans ⚙, choisissez le mode clair ou sombre et une couleur secondaire. Ces préférences sont conservées dans le navigateur, indépendamment des données synchronisées. Sur téléphone, la navigation se trouve en bas de l'écran.
+## Fonctionnement
+- Lecture : directe depuis `data.json` (aucun token requis, dépôt public).
+- Écriture : chaque modification est envoyée à `data.json` via l’API GitHub (commit « Mise à jour data.json »).
+- Sans token : lecture seule. Le token n’est stocké que dans le navigateur de l’appareil (localStorage) : à saisir sur chaque appareil, et à ne jamais committer.
+- `data.json` d’un dépôt public (photos comprises) est lisible par tous.
 
-## Proxy existant (facultatif)
-Les installations utilisant déjà `worker.js` restent compatibles : sélectionnez **Proxy Cloudflare existant** dans les réglages. Le Worker utilise les secrets `GITHUB_TOKEN` et `APP_PASSWORD`, ainsi que les variables `REPO` (`user/repo`), `BRANCH` et `ORIGIN`. Il peut cibler un dépôt public ou privé ; aucun proxy n'est nécessaire pour la connexion directe.
+## Apparence
+Réglages → Apparence : thème Auto / Clair / Sombre et couleur secondaire (palette ou couleur libre). Préférences mémorisées par appareil.
