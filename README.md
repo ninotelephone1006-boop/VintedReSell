@@ -1,14 +1,17 @@
 # Resell – Dashboard Vinted
 
-Fichiers : `index.html` (app), `data.json` (données), `worker.js` (proxy sécurisé).
+Dashboard statique : `index.html`, données dans `data.json`. Les articles restent aussi enregistrés localement dans le navigateur.
 
-## Installation (≈10 min)
-1. **Dépôt GitHub** : placez `index.html` et `data.json` à la racine, puis *Settings → Pages → Deploy from branch*.
-2. **Token** : *Settings → Developer settings → Fine-grained tokens*, accès uniquement à votre dépôt, permission **Contents : Read and write**.
-3. **Worker** : sur dash.cloudflare.com → Workers → créez un Worker, collez `worker.js`, puis ajoutez :
-   - Secrets : `GITHUB_TOKEN` (le token), `APP_PASSWORD` (un mot de passe de votre choix)
-   - Variables : `REPO` = `votre-user/votre-depot`, `BRANCH` = `main`, `ORIGIN` = `https://votre-user.github.io`
-4. Ouvrez le dashboard → icône ⚙ → collez l’URL du Worker et le mot de passe.
+## Installation et synchronisation directe
+1. Placez `index.html` et `data.json` à la racine de votre dépôt GitHub **public** et activez GitHub Pages dans **Settings → Pages**.
+2. Créez un token GitHub fine-grained limité à ce dépôt, avec la permission **Contents : Read and write**. Les règles de protection de branche doivent autoriser les commits de ce token.
+3. Ouvrez le dashboard, puis ⚙ → **GitHub direct**. Indiquez `propriétaire/dépôt`, la branche (par exemple `main`) et le token, puis connectez-vous.
+4. Les modifications sont sauvegardées dans `data.json`. Le bouton d'état permet de réessayer une synchronisation. Si le fichier distant a changé depuis son chargement, la sauvegarde est refusée pour éviter de l'écraser : les données locales restent dans le navigateur. Réconciliez les données avant de recharger la page ou de reconnecter le dépôt.
 
-## Confidentialité
-`data.json` d’un dépôt public est lisible par tous (photos comprises). Pour garder vos données privées, mettez `REPO` sur un **second dépôt privé** contenant `data.json` : le dashboard reste sur GitHub Pages, les données restent privées.
+Le token est stocké dans le stockage local du navigateur, jamais dans `data.json`. Utilisez un appareil personnel, limitez les permissions et révoquez le token si nécessaire. Tout script exécuté sur cette origine peut accéder au token. **Dans un dépôt public, `data.json` et les photos sont lisibles par tous**, y compris dans l'historique Git.
+
+## Personnalisation et mobile
+Dans ⚙, choisissez le mode clair ou sombre et une couleur secondaire. Ces préférences sont conservées dans le navigateur, indépendamment des données synchronisées. Sur téléphone, la navigation se trouve en bas de l'écran.
+
+## Proxy existant (facultatif)
+Les installations utilisant déjà `worker.js` restent compatibles : sélectionnez **Proxy Cloudflare existant** dans les réglages. Le Worker utilise les secrets `GITHUB_TOKEN` et `APP_PASSWORD`, ainsi que les variables `REPO` (`user/repo`), `BRANCH` et `ORIGIN`. Il peut cibler un dépôt public ou privé ; aucun proxy n'est nécessaire pour la connexion directe.
