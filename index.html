@@ -202,7 +202,7 @@ const sum=(a,f)=>a.reduce((t,i)=>t+f(i),0);
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const jp=(k,d)=>{try{return JSON.parse(ls.get(k)||'null')||d}catch(e){return d}};
 
-let D=norm(jp('vd_data',null)),cfg=jp('vd_cfg',{}),pref={theme:'auto',accent:'#0071e3',...jp('vd_pref',{})},view='home',range='7',S={q:'',sort:'new',f:'all',per:'all'},tmp='',loaded=false;
+let D=norm(null),cfg=jp('vd_cfg',{}),pref={theme:'auto',accent:'#0071e3',...jp('vd_pref',{})},view='home',range='7',S={q:'',sort:'new',f:'all',per:'all'},tmp='',loaded=false;
 function norm(j){return{settings:{goal:0,...(j&&j.settings)},items:Array.isArray(j&&j.items)?j.items:[]}}
 const sold=()=>D.items.filter(i=>i.status==='sold'),onSale=()=>D.items.filter(i=>i.status!=='sold');
 
@@ -233,58 +233,79 @@ function applyPref(){
 function setPref(o){pref={...pref,...o};ls.set('vd_pref',JSON.stringify(pref));applyPref()}
 mq.addEventListener&&mq.addEventListener('change',()=>{if(pref.theme==='auto')applyPref()});
 
-/* ---------- Synchronisation GitHub (dépôt public, API directe) ---------- */
+/* ---------- Synchronisation en ligne via data.json ---------- */
 let timer,busy=false,dirty=false;
 const pill=$('#pill');
 function setSt(c,t){pill.className='pill '+c;$('span',pill).textContent=t}
-const b64=s=>{const b=new TextEncoder().encode(s);let o='';for(let i=0;i<b.length;i+=32768)o+=String.fromCharCode(...b.subarray(i,i+32768));return btoa(o)};
-function guess(){const h=location.hostname;if(!h.endsWith('.github.io'))return'';const u=h.split('.')[0];return`${u}/${location.pathname.split('/')[1]||h}`}
-const repo=()=>(cfg.repo||guess()).trim(),repoOk=()=>/^[\w.-]+\/[\w.-]+$/.test(repo()),br=()=>(cfg.branch||'main').trim(),canWrite=()=>repoOk()&&!!cfg.token;
-const apiUrl=()=>`https://api.github.com/repos/${repo()}/contents/data.json`;
-const hdr=a=>({Accept:a,'X-GitHub-Api-Version':'2022-11-28',...(cfg.token?{Authorization:`Bearer ${cfg.token}`}:{})});
-async function fetchRemote(){
- const r=await fetch(`${apiUrl()}?ref=${encodeURIComponent(br())}`,{headers:hdr('application/vnd.github.raw+json'),cache:'no-store'});
- if(r.ok)return r.json();
- if(r.status===404)return null;
- if(!cfg.token&&(r.status===403||r.status===429)){ /* limite de l’API sans token → lecture via raw */
-  const w=await fetch(`https://raw.githubusercontent.com/${repo()}/${encodeURIComponent(br())}/data.json?t=${Date.now()}`,{cache:'no-store'});
-  if(w.ok)return w.json();if(w.status===404)return null;throw w.status;
- }
- throw r.status;
+const DATA_URL='data.json';
+const WORKER_URL=()=> (cfg.workerUrl||'').trim().replace(/\/$/,'');
+function dataGetUrl(){
+ const w=WORKER_URL();
+ if(w) return w+'/data';
+ return DATA_URL;
 }
-const errTxt=(e,w)=>e===401?'Token refusé':(e===403||e===404)&&w?'Accès refusé — vérifiez le token':e===403?'Limite GitHub — réessayer':'Hors ligne — réessayer';
+function dataPutUrl(){
+ const w=WORKER_URL();
+ if(w) return w+'/data';
+ return DATA_URL;
+}
 async function pull(){
- if(!repoOk()){loaded=true;setSt('','Local uniquement');render();return}
  setSt('busy','Chargement…');
  try{
-  const j=await fetchRemote();loaded=true;
-  if(j&&Array.isArray(j.items)){D=norm(j);ls.set('vd_data',JSON.stringify(D));setSt('ok',canWrite()?'Synchronisé':'Lecture seule')}
-  else if(canWrite())push();else setSt('err','data.json introuvable');
- }catch(e){setSt('err',errTxt(e,false))}
+  const url=dataGetUrl()+(dataGetUrl().includes('?')?'&':'?')+'t='+Date.now();
+  const headers={};
+  if(WORKER_URL() && cfg.workerAuth) headers['X-Auth']=cfg.workerAuth;
+  const r=await fetch(url,{cache:'no-store',headers});
+  if(!r.ok) throw r.status;
+  let j;
+  try{ j=await r.json(); }catch{ j=null; }
+  // Supporte à la fois {items:[]} et {} vide
+  if(j && Array.isArray(j.items)){
+    D=norm(j);
+  } else if(j && (j.settings || j.items)){
+    D=norm(j);
+  } else if(!j || Object.keys(j).length===0){
+    // data.json vide → on garde D local et on pousse une première fois si possible
+    if(D.items.length===0 && !D.settings.goal) { /* rien à faire */ }
+  }
+  loaded=true;
+  setSt('ok','En ligne');
+ }catch(e){
+  console.warn('pull error',e);
+  if(e===404) setSt('err','data.json introuvable');
+  else setSt('err','Hors ligne');
+  loaded=true;
+ }
  render();
 }
 function save(){
- ls.set('vd_data',JSON.stringify(D));
- if(!repoOk()||!loaded)return;
- if(!cfg.token){setSt('err','Lecture seule — token requis');return}
- setSt('busy','Synchronisation…');clearTimeout(timer);timer=setTimeout(push,700);
+ if(!loaded) return;
+ setSt('busy','Synchronisation…');
+ clearTimeout(timer);
+ timer=setTimeout(push,400);
 }
 async function push(){
- if(!canWrite())return;
- if(busy){dirty=true;return}busy=true;
+ if(busy){dirty=true;return}
+ busy=true;
+ setSt('busy','Synchronisation…');
  try{
-  for(let a=0;a<2;a++){
-   const m=await fetch(`${apiUrl()}?ref=${encodeURIComponent(br())}`,{headers:hdr('application/vnd.github+json'),cache:'no-store'});
-   if(!m.ok&&m.status!==404)throw m.status;
-   const sha=m.ok?(await m.json()).sha:undefined;
-   const r=await fetch(apiUrl(),{method:'PUT',headers:{...hdr('application/vnd.github+json'),'Content-Type':'application/json'},body:JSON.stringify({message:'Mise à jour data.json',content:b64(JSON.stringify(D,null,2)),branch:br(),sha})});
-   if(r.ok){setSt('ok','Synchronisé');break}
-   if((r.status===409||r.status===422)&&!a)continue;
-   throw r.status;
-  }
- }catch(e){setSt('err',errTxt(e,true))}
- busy=false;if(dirty){dirty=false;push()}
+  const url=dataPutUrl();
+  const headers={'Content-Type':'application/json'};
+  if(WORKER_URL() && cfg.workerAuth) headers['X-Auth']=cfg.workerAuth;
+  const body=JSON.stringify(D,null,2);
+  const r=await fetch(url,{method:'PUT',headers,body});
+  if(!r.ok) throw r.status;
+  setSt('ok','Synchronisé');
+ }catch(e){
+  console.warn('push error',e);
+  setSt('err','Erreur sauvegarde');
+ }
+ busy=false;
+ if(dirty){dirty=false;push()}
 }
+// Re-synchronise quand on revient sur l'onglet (multi-appareils)
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && loaded) pull(); });
+setInterval(()=>{ if(loaded && !busy) pull(); }, 30000);
 
 /* ---------- Rendu ---------- */
 function render(){
@@ -408,20 +429,32 @@ function sellForm(id){
 }
 function cfgForm(){
  const sws=PRESETS.map(p=>`<button type="button" class="sw" data-ac="${p[1]}" style="--c:${p[1]};--t:${onColor(p[1])}" aria-label="${p[0]}" title="${p[0]}">${ICON.check}</button>`).join('');
+ const hasWorker = !!(cfg.workerUrl||'').trim();
  dlg.innerHTML=`<h2>Réglages</h2>
  <section class="set" style="margin-top:16px"><h3>Apparence</h3>
   <div class="seg" role="group" aria-label="Thème">${[['auto','Auto'],['light','Clair'],['dark','Sombre']].map(t=>`<button type="button" data-th="${t[0]}">${t[1]}</button>`).join('')}</div>
   <p class="lbl">Couleur secondaire</p>
   <div class="sws">${sws}<label class="sw custom" title="Couleur personnalisée" aria-label="Couleur personnalisée">${ICON.check}<input type="color" id="cacc" value="${isHex(pref.accent)?pref.accent:'#0071e3'}"></label></div>
  </section>
- <section class="set"><h3>Synchronisation GitHub</h3>
-  <p class="note">Les données sont enregistrées dans <b>data.json</b> de votre dépôt public. Le token reste uniquement dans ce navigateur ; sans token, le dashboard est en lecture seule.</p>
-  <form id="f"><label class="fld">Dépôt (utilisateur/dépôt)<input name="r" placeholder="${esc(guess()||'votre-nom/resell')}" value="${esc(cfg.repo||'')}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-  <label class="fld">Branche<input name="b" placeholder="main" value="${esc(cfg.branch||'')}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-  <label class="fld">Token GitHub (Contents : lecture et écriture)<input name="t" type="password" autocomplete="off" placeholder="github_pat_…" value="${esc(cfg.token||'')}"></label>
-  <div class="foot"><button type="button" class="btn sec" data-a="close">Fermer</button><button class="btn">Enregistrer et connecter</button></div></form>
+ <section class="set"><h3>Synchronisation</h3>
+  <p class="note">L'application est <b>toujours en ligne</b> via <b>data.json</b>. Lecture et écriture se font directement sur <code>data.json</code> (même dossier que <code>index.html</code>). Pour GitHub Pages, configure un Worker Cloudflare (voir <code>worker.js</code>) et indique son URL ci-dessous.</p>
+  <div class="note" style="margin-top:10px;padding:10px 12px;background:var(--fill);border-radius:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span style="width:8px;height:8px;border-radius:50%;background:var(--ac2);flex:none"></span>
+    <span>Mode : <b>En ligne</b> — <code>data.json</code></span>
+    <span style="margin-left:auto;font-size:12px;color:var(--mu)">${hasWorker? 'Worker configuré' : 'Sans Worker (fichier direct)'}</span>
+  </div>
+  <form id="f" style="margin-top:14px">
+    <label class="fld">URL du Worker (optionnel)<input name="w" placeholder="https://vintedresell.workers.dev" value="${esc(cfg.workerUrl||'')}" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+    <label class="fld">Mot de passe Worker (X-Auth, optionnel)<input name="a" type="password" autocomplete="off" placeholder="••••••••" value="${esc(cfg.workerAuth||'')}"</label>
+    <p class="note">Laisse vide si ton hébergement autorise <code>PUT data.json</code>. Sur GitHub Pages, ce champ est requis pour enregistrer.</p>
+    <div class="foot"><button type="button" class="btn sec" data-a="close">Fermer</button><button class="btn">Enregistrer</button></div>
+  </form>
+  <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn sec sm" data-a="reload">Recharger depuis data.json</button>
+    <button class="btn sec sm" data-a="export">Exporter data.json</button>
+  </div>
  </section>`;
- $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);cfg={repo:v.get('r').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,''),branch:v.get('b').trim(),token:v.get('t').trim()};ls.set('vd_cfg',JSON.stringify(cfg));loaded=false;dlg.close();pull()};
+ $('#f').onsubmit=e=>{e.preventDefault();const v=new FormData(e.target);cfg={workerUrl:v.get('w').trim().replace(/\/$/,''),workerAuth:v.get('a').trim()};ls.set('vd_cfg',JSON.stringify(cfg));dlg.close();toast('Réglages enregistrés');pull()};
  applyPref();dlg.showModal();
 }
 let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200)}
@@ -440,7 +473,9 @@ document.addEventListener('click',e=>{
   rmph:()=>{tmp='';$('#up').innerHTML=upHtml();t.remove()},
   del:()=>{if(confirm(`Supprimer « ${it.name} » ?`)){D.items=D.items.filter(i=>i!==it);save();render();toast('Article supprimé')}},
   unsell:()=>{it.status='sale';delete it.sold;delete it.soldAt;save();render();toast('Article remis en vente')},
-  sync:()=>repoOk()?(loaded&&canWrite()?push():pull()):cfgForm()})[d.a]();
+  sync:()=>pull(),
+  reload:()=>pull(),
+  export:()=>{ const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a');a.href=u;a.download='data.json';a.click();URL.revokeObjectURL(u); toast('Export téléchargé')})[d.a]();
 });
 document.addEventListener('input',e=>{
  if(e.target.id==='cacc')return setPref({accent:e.target.value});
